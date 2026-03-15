@@ -1,0 +1,97 @@
+# DevController HTTP tests for JetBrains HTTP client or other REST clients
+# Usage: open this file in IntelliJ/IDEA (HTTP client) and click "Run" on the requests.
+# Configure baseUrl and correlationId below if needed.
+@baseUrl = http://localhost:8080
+@correlationId = 123e4567-e89b-12d3-a456-426614174000
+
+###
+# 1) Create developer (valid)
+POST {{baseUrl}}/developers
+Content-Type: application/json
+correlationId: {{correlationId}}
+
+{
+  "fullName": "João Silva",
+  "email": "joao.silva+1@example.com",
+  "nickname": "joaos",
+  "uf": "SP",
+  "yearsOfExperience": 5,
+  "primaryLanguage": "java",
+  "interestedInAi": true,
+  "skills": ["Spring Boot", "SQL", "REST"]
+}
+
+###
+# 2) Create developer (duplicate email) - expected 409 CONFLICT when using same email as previous
+POST {{baseUrl}}/developers
+Content-Type: application/json
+correlationId: {{correlationId}}
+
+{
+  "fullName": "Maria Santos",
+  "email": "joao.silva+1@example.com",
+  "nickname": "marias",
+  "uf": "RJ",
+  "yearsOfExperience": 3,
+  "primaryLanguage": "java",
+  "interestedInAi": false,
+  "skills": ["Java", "JUnit"]
+}
+
+###
+# 3) Create developer (invalid payload) - expected 400 BAD REQUEST
+POST {{baseUrl}}/developers
+Content-Type: application/json
+correlationId: {{correlationId}}
+
+{
+  "fullName": "Al",
+  "email": "not-an-email",
+  "nickname": "x",
+  "uf": "XX",
+  "yearsOfExperience": -1,
+  "primaryLanguage": "",
+  "interestedInAi": null,
+  "skills": []
+}
+
+###
+# 4) List developers (all)
+GET {{baseUrl}}/developers
+correlationId: {{correlationId}}
+
+###
+# 5) List developers filtered by UF (example SP)
+GET {{baseUrl}}/developers?uf=SP
+correlationId: {{correlationId}}
+
+###
+# 6) List developers filtered by language (case-insensitive)
+GET {{baseUrl}}/developers?language=java
+correlationId: {{correlationId}}
+
+###
+# 7) Get developer by id (replace {id} with the id returned by create, ex: 1)
+GET {{baseUrl}}/developers/{id}
+correlationId: {{correlationId}}
+
+###
+# 8) Update experience (PUT) - replace {id} with existing developer id
+PUT {{baseUrl}}/developers/{id}/experience
+Content-Type: application/json
+correlationId: {{correlationId}}
+
+{
+  "yearsOfExperience": 10
+}
+
+###
+# Quick PowerShell/curl examples (replace baseUrl and correlationId as needed):
+# Create developer (curl)
+# curl -X POST "http://localhost:8080/developers" -H "Content-Type: application/json" -H "correlationId: 123e4567-e89b-12d3-a456-426614174000" -d '{"fullName":"Teste","email":"teste+ps@example.com","nickname":"teste1","uf":"SP","yearsOfExperience":2,"primaryLanguage":"java","interestedInAi":true,"skills":["Java"]}'
+
+# Note:
+# - The controller requires the header `correlationId` (UUID). Use a valid UUID value.
+# - Replace {id} placeholders with the actual id returned by the POST response (Location header or response body id).
+# - The app must be running (mvnw spring-boot:run) on the configured port (default 8080) for these requests to succeed.
+
