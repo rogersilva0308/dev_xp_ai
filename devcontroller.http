@@ -12,7 +12,7 @@ correlationId: {{correlationId}}
 
 {
   "fullName": "João Silva",
-  "email": "joao.silva+1@example.com",
+  "email": "joao.silva3@example.com",
   "nickname": "joaos",
   "uf": "SP",
   "yearsOfExperience": 5,
@@ -29,7 +29,7 @@ correlationId: {{correlationId}}
 
 {
   "fullName": "Maria Santos",
-  "email": "joao.silva+1@example.com",
+  "email": "joao.silva2@example.com",
   "nickname": "marias",
   "uf": "RJ",
   "yearsOfExperience": 3,

@@ -1,4 +1,4 @@
-package br.comdevsuperior.devxpai;
+package br.com.devsuperior.dev_xp_ai;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.dao.EmptyResultDataAccessException;
