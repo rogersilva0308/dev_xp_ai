@@ -24,7 +24,8 @@ class DevControllerTest {
     private JdbcTemplate jdbcTemplate;
     @BeforeEach
     void limparTabela() {
-        jdbcTemplate.execute("DELETE FROM tb_developer");
+        jdbcTemplate.execute("DELETE FROM tb_developer_experience");
+        jdbcTemplate.execute("DELETE FROM tb_developer_user");
     }
     // ---------------------------------------------------------------
     // Utilitarios
@@ -186,8 +187,15 @@ class DevControllerTest {
     void deveRetornarApenasDesenvolvedoresDaUfFiltrada() throws Exception {
         criarDesenvolvedor("sp@email.com", "dev-sp");
         jdbcTemplate.update(
-                "INSERT INTO tb_developer (full_name, email, nickname, uf, years_of_experience, primary_language, interested_in_ai, skills) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                "Ana Minas", "mg@email.com", "dev-mg", "MG", 3, "Python", false, "Django,Flask"
+                "INSERT INTO tb_developer_user (full_name, email, nickname, uf) VALUES (?, ?, ?, ?)",
+                "Ana Minas", "mg@email.com", "dev-mg", "MG"
+        );
+        Long userIdMg = jdbcTemplate.queryForObject(
+                "SELECT id FROM tb_developer_user WHERE email = ?", Long.class, "mg@email.com"
+        );
+        jdbcTemplate.update(
+                "INSERT INTO tb_developer_experience (developer_id, years_of_experience, primary_language, interested_in_ai, skills) VALUES (?, ?, ?, ?, ?)",
+                userIdMg, 3, "Python", false, "Django,Flask"
         );
         mockMvc.perform(get("/developers")
                         .header("correlationId", UUID.randomUUID().toString())
@@ -201,8 +209,15 @@ class DevControllerTest {
     void deveRetornarApenasDesenvolvedoresDaLinguagemFiltrada() throws Exception {
         criarDesenvolvedor("java@email.com", "dev-java");
         jdbcTemplate.update(
-                "INSERT INTO tb_developer (full_name, email, nickname, uf, years_of_experience, primary_language, interested_in_ai, skills) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                "Pedro Python", "python@email.com", "dev-py", "RJ", 2, "Python", false, "Django"
+                "INSERT INTO tb_developer_user (full_name, email, nickname, uf) VALUES (?, ?, ?, ?)",
+                "Pedro Python", "python@email.com", "dev-py", "RJ"
+        );
+        Long userIdPython = jdbcTemplate.queryForObject(
+                "SELECT id FROM tb_developer_user WHERE email = ?", Long.class, "python@email.com"
+        );
+        jdbcTemplate.update(
+                "INSERT INTO tb_developer_experience (developer_id, years_of_experience, primary_language, interested_in_ai, skills) VALUES (?, ?, ?, ?, ?)",
+                userIdPython, 2, "Python", false, "Django"
         );
         mockMvc.perform(get("/developers")
                         .header("correlationId", UUID.randomUUID().toString())

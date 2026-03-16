@@ -3,11 +3,12 @@ package br.com.devsuperior.dev_xp_ai.service;
 import br.com.devsuperior.dev_xp_ai.dto.DeveloperCreateRequestDto;
 import br.com.devsuperior.dev_xp_ai.dto.DeveloperResponseDto;
 import br.com.devsuperior.dev_xp_ai.dto.UpdateExperienceRequestDto;
-import br.com.devsuperior.dev_xp_ai.entity.DeveloperEntity;
+import br.com.devsuperior.dev_xp_ai.entity.DeveloperExperienceEntity;
+import br.com.devsuperior.dev_xp_ai.entity.DeveloperUserEntity;
 import br.com.devsuperior.dev_xp_ai.exception.BadRequestException;
 import br.com.devsuperior.dev_xp_ai.exception.ConflictException;
 import br.com.devsuperior.dev_xp_ai.exception.NotFoundException;
-import br.com.devsuperior.dev_xp_ai.repository.DeveloperRepository;
+import br.com.devsuperior.dev_xp_ai.repository.DeveloperUserRepository;
 import br.com.devsuperior.dev_xp_ai.util.StringNormalizerUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +37,10 @@ public class DeveloperService {
             "RR", "SC", "SP", "SE", "TO"
     );
 
-    private final DeveloperRepository developerRepository;
+    private final DeveloperUserRepository developerUserRepository;
 
-    public DeveloperService(DeveloperRepository developerRepository) {
-        this.developerRepository = developerRepository;
+    public DeveloperService(DeveloperUserRepository developerUserRepository) {
+        this.developerUserRepository = developerUserRepository;
     }
 
     @Transactional
@@ -58,28 +59,34 @@ public class DeveloperService {
         String normalizedName = StringNormalizerUtil.toTitleCase(request.fullName());
         List<String> normalizedSkills = StringNormalizerUtil.normalizeSkillsToTitleCase(request.skills());
 
-        if (developerRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+        if (developerUserRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new ConflictException("Email ja cadastrado",
                     List.of("Ja existe um desenvolvedor com este email."));
         }
 
-        if (developerRepository.existsByNicknameIgnoreCase(normalizedNickname)) {
+        if (developerUserRepository.existsByNicknameIgnoreCase(normalizedNickname)) {
             throw new ConflictException("Nickname ja cadastrado",
                     List.of("Ja existe um desenvolvedor com este nickname."));
         }
 
-        DeveloperEntity entity = new DeveloperEntity(
+        DeveloperUserEntity user = new DeveloperUserEntity(
                 normalizedName,
                 normalizedEmail,
                 normalizedNickname,
-                normalizedUf,
+                normalizedUf
+        );
+
+        DeveloperExperienceEntity experience = new DeveloperExperienceEntity(
+                user,
                 request.yearsOfExperience(),
                 normalizedLanguage,
                 request.interestedInAi(),
                 normalizedSkills
         );
 
-        DeveloperEntity saved = developerRepository.save(entity);
+        user.setExperience(experience);
+
+        DeveloperUserEntity saved = developerUserRepository.save(user);
         DeveloperResponseDto response = toResponseDto(saved);
 
         log.info("createDeveloper - end | correlationId={} | id={}", MDC.get("correlationId"), saved.getId());
@@ -103,16 +110,17 @@ public class DeveloperService {
             uf = normalizedUf;
         }
 
-        List<DeveloperEntity> entities;
+        List<DeveloperUserEntity> entities;
         if (hasUf && hasLanguage) {
-            entities = developerRepository.findAllByUfAndPrimaryLanguageIgnoreCaseOrderById(
-                    uf, language.trim());
+            entities = developerUserRepository
+                    .findAllByUfAndExperiencePrimaryLanguageIgnoreCaseOrderById(uf, language.trim());
         } else if (hasUf) {
-            entities = developerRepository.findAllByUfOrderById(uf);
+            entities = developerUserRepository.findAllByUfOrderById(uf);
         } else if (hasLanguage) {
-            entities = developerRepository.findAllByPrimaryLanguageIgnoreCaseOrderById(language.trim());
+            entities = developerUserRepository
+                    .findAllByExperiencePrimaryLanguageIgnoreCaseOrderById(language.trim());
         } else {
-            entities = developerRepository.findAllByOrderById();
+            entities = developerUserRepository.findAllByOrderById();
         }
 
         List<DeveloperResponseDto> response = entities.stream().map(this::toResponseDto).toList();
@@ -126,12 +134,12 @@ public class DeveloperService {
     public DeveloperResponseDto getDeveloperById(Long id) {
         log.info("getDeveloperById - start | correlationId={} | id={}", MDC.get("correlationId"), id);
 
-        DeveloperEntity entity = developerRepository.findById(id)
+        DeveloperUserEntity user = developerUserRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException(
                         "Desenvolvedor nao encontrado",
                         List.of("Nao existe desenvolvedor com id " + id + ".")));
 
-        DeveloperResponseDto response = toResponseDto(entity);
+        DeveloperResponseDto response = toResponseDto(user);
         log.info("getDeveloperById - end | correlationId={} | id={}", MDC.get("correlationId"), id);
         return response;
     }
@@ -145,13 +153,13 @@ public class DeveloperService {
             throw new BadRequestException("Falha de validacao", validationErrors);
         }
 
-        DeveloperEntity entity = developerRepository.findById(id)
+        DeveloperUserEntity user = developerUserRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException(
                         "Desenvolvedor nao encontrado",
                         List.of("Nao existe desenvolvedor com id " + id + ".")));
 
-        entity.setYearsOfExperience(request.yearsOfExperience());
-        DeveloperEntity saved = developerRepository.save(entity);
+        user.getExperience().setYearsOfExperience(request.yearsOfExperience());
+        DeveloperUserEntity saved = developerUserRepository.save(user);
         DeveloperResponseDto response = toResponseDto(saved);
 
         log.info("updateExperience - end | correlationId={} | id={}", MDC.get("correlationId"), id);
@@ -223,17 +231,18 @@ public class DeveloperService {
         return errors;
     }
 
-    private DeveloperResponseDto toResponseDto(DeveloperEntity entity) {
+    private DeveloperResponseDto toResponseDto(DeveloperUserEntity user) {
+        DeveloperExperienceEntity exp = user.getExperience();
         return new DeveloperResponseDto(
-                entity.getId(),
-                entity.getFullName(),
-                entity.getEmail(),
-                entity.getNickname(),
-                entity.getUf(),
-                entity.getYearsOfExperience(),
-                entity.getPrimaryLanguage(),
-                entity.getInterestedInAi(),
-                entity.getSkills()
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getNickname(),
+                user.getUf(),
+                exp.getYearsOfExperience(),
+                exp.getPrimaryLanguage(),
+                exp.getInterestedInAi(),
+                exp.getSkills()
         );
     }
 }
